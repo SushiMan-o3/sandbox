@@ -1,0 +1,6 @@
+docling
+easyocr
+python-multipart
+rapidocr 
+rapidocr_torch
+pydantic
