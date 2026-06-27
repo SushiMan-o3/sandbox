@@ -17,10 +17,10 @@ class GetImgResponse(BaseModel):
 # --- setup for functions + functions ---
 
 pipeline_options = PdfPipelineOptions()
-pipeline_options.do_ocr = True
-pipeline_options.ocr_options = EasyOcrOptions()
+pipeline_options.do_ocr = True # enables it to read pdfs/images without text layer
+pipeline_options.ocr_options = EasyOcrOptions() # EasyOcr is the best option, the other Ocrs suck
 
-converter = DocumentConverter(
+converter = DocumentConverter(   # adding format options for the converter
     format_options={
         InputFormat.IMAGE: PdfFormatOption(pipeline_options=pipeline_options),
         InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options),
