@@ -9,7 +9,7 @@ from docling.datamodel.base_models import InputFormat
 
 # --- schemas --- 
 
-class GetImgResponse(BaseModel):
+class UploadResponse(BaseModel):
     name: str
     markdown: str
     
@@ -45,11 +45,11 @@ def convert_to_markdown(upload: UploadFile):
 app = FastAPI()
 
 @app.get("/")
-def read_root():
-    return {"Hello": "World"}
+def home():
+    return {}
 
 
-@app.post("/upload_file_to_markdown", response_model=GetImgResponse)
+@app.post("/upload_file_to_markdown", response_model=UploadResponse)
 def upload_file_to_markdown(name: str, file: UploadFile = File(...)):
     return {
         "name": name,
