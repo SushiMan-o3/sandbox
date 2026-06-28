@@ -25,7 +25,7 @@ def init_db():
             instructions TEXT NOT NULL,
             durationInMinutes INTEGER NOT NULL,
             serving INTEGER NOT NULL,
-            notes TEXT,
+            notes TEXT
         )
     """)
     

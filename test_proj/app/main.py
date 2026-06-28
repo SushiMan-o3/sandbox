@@ -7,7 +7,8 @@ import httpx
 from anthropic import Anthropic
 from bs4 import BeautifulSoup
 from fastapi import FastAPI, File, UploadFile, HTTPException
-from pydantic import BaseModel, Field, Optional
+from pydantic import BaseModel, Field
+from typing import Optional
 import sqlite3 as sql
 
 from docling.document_converter import DocumentConverter, PdfFormatOption
