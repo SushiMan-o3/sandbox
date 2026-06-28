@@ -1,4 +1,4 @@
-CLAUDE_TOKEN = ""
+CLAUDE_TOKEN = "Get ur own"
 DATABASE_URL = "database.db"
 
 PROMPT = """

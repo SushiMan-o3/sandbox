@@ -1,4 +1,7 @@
 import os
+import re
+import json
+import base64
 import shutil
 import tempfile
 from pathlib import Path
@@ -68,33 +71,132 @@ class RecipeDBOut(BaseModel):
 # --- setup for functions + functions ---
 
 client = Anthropic(
-    api_key=os.environ.get(CLAUDE_TOKEN),
+    api_key=CLAUDE_TOKEN,
 )
 
 
-pipeline_options = PdfPipelineOptions()
-pipeline_options.do_ocr = True # enables it to read pdfs/images without text layer
-pipeline_options.ocr_options = EasyOcrOptions() # EasyOcr is the best option, the other Ocrs suck
+# pipeline_options = PdfPipelineOptions()
+# pipeline_options.do_ocr = True # enables it to read pdfs/images without text layer
+# pipeline_options.ocr_options = EasyOcrOptions() # EasyOcr is the best option, the other Ocrs suck
 
-converter = DocumentConverter(   # adding format options for the converter
-    format_options={
-        InputFormat.IMAGE: PdfFormatOption(pipeline_options=pipeline_options),
-        InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options),
-    }
-)
+# converter = DocumentConverter(   # adding format options for the converter
+#     format_options={
+#         InputFormat.IMAGE: PdfFormatOption(pipeline_options=pipeline_options),
+#         InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options),
+#     }
+# )
 
 
-def convert_to_markdown(upload: UploadFile):
-    suffix = Path(upload.filename).suffix
+async def convert_to_markdown(upload: UploadFile) -> str:
+    """
+    Extract text from uploaded files using Claude's API.
+    Supports: images (JPEG, PNG, GIF, WebP), PDFs, Word docs (.docx, .doc), 
+    text files, and other document formats.
+    Returns markdown-formatted text.
+    """
+    suffix = Path(upload.filename).suffix.lower()
+    
+    image_formats = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+    document_formats = {'.pdf'}
+    text_formats = {'.txt', '.md', '.csv', '.json', '.xml', '.html', '.htm'}
+    
+    all_formats = image_formats | document_formats | text_formats
+    
+    if suffix not in all_formats:
+        raise ValueError(f"Unsupported format: {suffix}. Supported: {all_formats}")
+    
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
         shutil.copyfileobj(upload.file, tmp)
         tmp_path = tmp.name
-
+    
     try:
-        doc = converter.convert(tmp_path).document
-        return doc.export_to_markdown()
+        with open(tmp_path, 'rb') as f:
+            file_data = base64.standard_b64encode(f.read()).decode('utf-8')
+        
+        if suffix in image_formats:
+            media_type_map = {
+                '.jpg': 'image/jpeg',
+                '.jpeg': 'image/jpeg',
+                '.png': 'image/png',
+                '.gif': 'image/gif',
+                '.webp': 'image/webp'
+            }
+            
+            content = [
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": media_type_map[suffix],
+                        "data": file_data
+                    }
+                },
+                {
+                    "type": "text",
+                    "text": "Extract all text from this image and return it as well-formatted markdown. Preserve the structure and layout where possible. Do not add commentary, just return the extracted text in markdown format."
+                }
+            ]
+        
+        elif suffix in document_formats:
+            # Document handling (PDF, Word, Excel, PowerPoint, etc.)
+            media_type_map = {
+                '.pdf': 'application/pdf',
+            }
+            
+            content = [
+                {
+                    "type": "document",
+                    "source": {
+                        "type": "base64",
+                        "media_type": media_type_map[suffix],
+                        "data": file_data
+                    }
+                },
+                {
+                    "type": "text",
+                    "text": "Extract all text and content from this document and return it as well-formatted markdown. Preserve the structure, headings, lists, tables, and layout where possible. For spreadsheets, format tables clearly. For presentations, include slide content in order. Do not add commentary, just return the extracted text in markdown format."
+                }
+            ]
+        
+        else:
+            # Text file handling
+            with open(tmp_path, 'r', encoding='utf-8', errors='ignore') as f:
+                text_content = f.read()
+            
+            content = [
+                {
+                    "type": "text",
+                    "text": f"Here is the content of a {suffix} file. Return it as well-formatted markdown, preserving structure where applicable:\n\n{text_content}"
+                }
+            ]
+        
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=4096,
+            messages=[
+                {
+                    "role": "user",
+                    "content": content
+                }
+            ]
+        )
+        
+        return message.content[0].text
+    
     finally:
         Path(tmp_path).unlink(missing_ok=True)
+
+# def convert_to_markdown(upload: UploadFile):
+#     suffix = Path(upload.filename).suffix
+#     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+#         shutil.copyfileobj(upload.file, tmp)
+#         tmp_path = tmp.name
+
+#     try:
+#         doc = converter.convert(tmp_path).document
+#         return doc.export_to_markdown()
+#     finally:
+#         Path(tmp_path).unlink(missing_ok=True)
         
         
 async def scrape_to_markdown(url: str) -> str:  
@@ -119,10 +221,13 @@ def convert_to_json(markdown: str) -> dict:
                 "content": PROMPT + markdown,
             }
         ],
-        model="claude-haiku-4-5",
+        model="claude-haiku-4-5-20251001",
     )
-    
-    return message.content
+
+    text = message.content[0].text.strip()
+    text = re.sub(r'^```(?:json)?\s*', '', text)
+    text = re.sub(r'\s*```$', '', text)
+    return json.loads(text.strip())
 
 
 # --- fastAPI set-up + Routes --- 
@@ -142,16 +247,16 @@ in there where the person can oversee what is happened and make edits as nesscar
 submit the recipe on their own as needed
 """
 
-@app.post("/upload_file_to_markdown", response_model=AIRecipeParseOut)
-def upload_file_to_markdown(file: UploadFile = File(...)):
-    markdown_content = convert_to_markdown(file)
+@app.post("/upload_file_to_json", response_model=AIRecipeParseOut)
+async def upload_file_to_json(file: UploadFile = File(...)):
+    markdown_content = await convert_to_markdown(file)
     json_content = convert_to_json(markdown_content)
     
     return json_content
     
     
-@app.post("/url_to_markdown", response_model=AIRecipeParseOut)
-async def upload_file_to_markdown(url: str):
+@app.post("/url_to_json", response_model=AIRecipeParseOut)
+async def upload_url_to_json(url: str):
     markdown_content = await scrape_to_markdown(url)
     json_content = convert_to_json(markdown_content)
 
@@ -222,3 +327,23 @@ def recipe_to_db(data: RecipeToDB):
     finally:
         if cursor and connection:
             close_db(cursor, connection)
+            
+
+@app.patch("/{recipeid}")
+def update_recipe(recipeid: int, data: RecipeToDB):
+    pass
+
+
+@app.delete("/{recipeid}")
+def delete_recipe(recipeid: int):
+    pass
+
+
+@app.get("/{recipeid}")
+def get_recipe(recipeid: int):
+    pass
+
+
+@app.get("/recipes")
+def get_recipes():
+    pass
