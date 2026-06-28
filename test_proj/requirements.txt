@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+python-multipart
+httpx
+beautifulsoup4
+docling
+easyocr
+rapidocr
+rapidocr_torch
+anthropic

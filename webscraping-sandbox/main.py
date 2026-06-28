@@ -2,7 +2,6 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import httpx
 from bs4 import BeautifulSoup
-import asyncio
 
 # --- schemas ---
 
