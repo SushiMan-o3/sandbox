@@ -62,6 +62,7 @@ class RecipeToDB(BaseModel):
     
 class RecipeDBOut(BaseModel):
     id: int
+    emoji: str
     recipe: RecipeCreate
     ingredients: list[IngredientOut] = []
     equipments: list[EquipmentOut] = []
@@ -235,21 +236,42 @@ def get_recipe_emoji(title: str, description: str = "", ingredients: list[str] =
     text = " ".join([title, description, *ingredients]).lower()
 
     emoji_rules = [
-        (["spaghetti", "pasta", "noodle", "carbonara", "alfredo"], "🍝"),
-        (["cookie", "cookies", "chocolate chip"], "🍪"),
-        (["avocado", "toast"], "🥑"),
-        (["soup", "broth", "stew"], "🍲"),
-        (["banana", "bread", "loaf"], "🍞"),
-        (["salad", "lettuce", "cucumber", "tomato"], "🥗"),
-        (["pizza"], "🍕"),
-        (["burger"], "🍔"),
-        (["rice"], "🍚"),
-        (["chicken"], "🍗"),
-        (["beef", "steak"], "🥩"),
-        (["fish", "salmon"], "🐟"),
-        (["egg", "eggs"], "🥚"),
-        (["cake"], "🍰"),
-        (["pancake", "pancakes"], "🥞"),
+        (["spaghetti", "pasta", "noodle", "noodles", "carbonara", "alfredo", "lasagna", "macaroni", "mac and cheese"], "🍝"),
+        (["ramen"], "🍜"),
+        (["cookie", "cookies", "chocolate chip", "biscuit"], "🍪"),
+        (["avocado"], "🥑"),
+        (["toast"], "🍞"),
+        (["soup", "broth", "stew", "chili"], "🍲"),
+        (["banana bread", "loaf"], "🍞"),
+        (["salad", "lettuce", "cucumber", "tomato", "caesar"], "🥗"),
+        (["pizza", "pepperoni"], "🍕"),
+        (["burger", "cheeseburger"], "🍔"),
+        (["fries", "french fries"], "🍟"),
+        (["rice", "fried rice", "risotto"], "🍚"),
+        (["sushi"], "🍣"),
+        (["chicken", "wings", "drumstick"], "🍗"),
+        (["beef", "steak", "ribeye"], "🥩"),
+        (["bacon"], "🥓"),
+        (["fish", "salmon", "tuna"], "🐟"),
+        (["shrimp", "prawn"], "🍤"),
+        (["egg", "eggs", "omelette", "omelet"], "🥚"),
+        (["cake", "cupcake"], "🍰"),
+        (["pie", "tart"], "🥧"),
+        (["pancake", "pancakes", "waffle", "waffles"], "🥞"),
+        (["ice cream", "gelato"], "🍨"),
+        (["donut", "doughnut"], "🍩"),
+        (["coffee", "latte", "espresso"], "☕"),
+        (["tea", "matcha"], "🍵"),
+        (["smoothie", "juice"], "🥤"),
+        (["taco", "burrito", "quesadilla"], "🌮"),
+        (["sandwich", "sub"], "🥪"),
+        (["hot dog"], "🌭"),
+        (["dumpling", "gyoza"], "🥟"),
+        (["curry"], "🍛"),
+        (["cheese"], "🧀"),
+        (["apple"], "🍎"),
+        (["orange"], "🍊"),
+        (["strawberry", "berry", "berries"], "🍓"),
     ]
 
     for keywords, emoji in emoji_rules:
@@ -337,8 +359,11 @@ def recipe_to_db(data: RecipeToDB):
 
         connection.commit()
 
+        emoji = get_recipe_emoji(recipe.title, recipe.description, [i.name for i in data.ingredients])
+
         return {
             "id": recipe_id,
+            "emoji": emoji,
             "recipe": recipe,
             "ingredients": data.ingredients,
             "equipments": data.equipments
@@ -410,8 +435,11 @@ def update_recipe(recipeid: int, data: RecipeToDB):
 
         connection.commit()
 
+        emoji = get_recipe_emoji(recipe.title, recipe.description, [i.name for i in data.ingredients])
+
         return {
             "id": recipeid,
+            "emoji": emoji,
             "recipe": recipe,
             "ingredients": data.ingredients,
             "equipments": data.equipments
@@ -481,6 +509,7 @@ def get_recipes(query: str = "", page: int = 0, limit: int = 6):
         return [
             {
                 "id": row[0],
+                "emoji": get_recipe_emoji(row[1], row[2], [i.name for i in ingredients_by_recipe.get(row[0], [])]),
                 "recipe": RecipeCreate(
                     title=row[1],
                     description=row[2],
@@ -536,6 +565,7 @@ def get_recipe(recipeid: int):
 
         return {
             "id": row[0],
+            "emoji": get_recipe_emoji(recipe_data.title, recipe_data.description, [i.name for i in ingredients]),
             "recipe": recipe_data,
             "ingredients": ingredients,
             "equipments": equipments,
