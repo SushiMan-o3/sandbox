@@ -329,21 +329,212 @@ def recipe_to_db(data: RecipeToDB):
             close_db(cursor, connection)
             
 
-@app.patch("/{recipeid}")
+@app.put("/{recipeid}", response_model=RecipeDBOut)
 def update_recipe(recipeid: int, data: RecipeToDB):
-    pass
+    connection = None
+    cursor = None
+
+    try:
+        connection, cursor = connect_db()
+
+        # check recipe exists
+        cursor.execute("SELECT id FROM recipes WHERE id = ?", (recipeid,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Recipe not found")
+
+        recipe = data.recipe
+
+        cursor.execute("""
+            UPDATE recipes SET
+                title = ?,
+                description = ?,
+                instructions = ?,
+                durationInMinutes = ?,
+                serving = ?,
+                notes = ?
+            WHERE id = ?
+        """, (
+            recipe.title,
+            recipe.description,
+            recipe.instructions,
+            recipe.durationInMinutes,
+            recipe.serving,
+            recipe.notes,
+            recipeid,
+        ))
+
+        # replace ingredients and equipments wholesale
+        cursor.execute("DELETE FROM ingredients WHERE recipeid = ?", (recipeid,))
+        cursor.execute("DELETE FROM equipments WHERE recipeid = ?", (recipeid,))
+
+        for ingredient in data.ingredients:
+            cursor.execute(
+                "INSERT INTO ingredients (name, recipeid) VALUES (?, ?)",
+                (ingredient.name, recipeid)
+            )
+
+        for equipment in data.equipments:
+            cursor.execute(
+                "INSERT INTO equipments (name, recipeid) VALUES (?, ?)",
+                (equipment.name, recipeid)
+            )
+
+        connection.commit()
+
+        return {
+            "id": recipeid,
+            "recipe": recipe,
+            "ingredients": data.ingredients,
+            "equipments": data.equipments
+        }
+
+    except HTTPException:
+        raise
+    except Exception as error:
+        if connection:
+            connection.rollback()
+        raise HTTPException(status_code=500, detail=f"Was not able to update recipe: {str(error)}")
+
+    finally:
+        if cursor and connection:
+            close_db(cursor, connection)
+
+
+@app.get("/recipes", response_model=list[RecipeDBOut])
+def get_recipes(page: int = 0, limit: int = 6):
+    connection = None
+    cursor = None
+
+    try:
+        connection, cursor = connect_db()
+
+        cursor.execute(
+            "SELECT id, title, description, instructions, durationInMinutes, serving, notes FROM recipes LIMIT ? OFFSET ?",
+            (limit, page * limit),
+        )
+        recipe_rows = cursor.fetchall()
+
+        if not recipe_rows:
+            return []
+
+        recipe_ids = [row[0] for row in recipe_rows]
+        placeholders = ",".join("?" * len(recipe_ids))
+
+        cursor.execute(
+            f"SELECT name, recipeid FROM ingredients WHERE recipeid IN ({placeholders})",
+            recipe_ids,
+        )
+        ingredients_by_recipe: dict[int, list[IngredientOut]] = {}
+        for name, rid in cursor.fetchall():
+            ingredients_by_recipe.setdefault(rid, []).append(IngredientOut(name=name))
+
+        cursor.execute(
+            f"SELECT name, recipeid FROM equipments WHERE recipeid IN ({placeholders})",
+            recipe_ids,
+        )
+        equipments_by_recipe: dict[int, list[EquipmentOut]] = {}
+        for name, rid in cursor.fetchall():
+            equipments_by_recipe.setdefault(rid, []).append(EquipmentOut(name=name))
+
+        return [
+            {
+                "id": row[0],
+                "recipe": RecipeCreate(
+                    title=row[1],
+                    description=row[2],
+                    instructions=row[3],
+                    durationInMinutes=row[4],
+                    serving=row[5],
+                    notes=row[6],
+                ),
+                "ingredients": ingredients_by_recipe.get(row[0], []),
+                "equipments": equipments_by_recipe.get(row[0], []),
+            }
+            for row in recipe_rows
+        ]
+
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"Failed to get recipes: {str(error)}")
+
+    finally:
+        if cursor and connection:
+            close_db(cursor, connection)
+
+
+@app.get("/{recipeid}", response_model=RecipeDBOut)
+def get_recipe(recipeid: int):
+    connection = None
+    cursor = None
+
+    try:
+        connection, cursor = connect_db()
+
+        cursor.execute(
+            "SELECT id, title, description, instructions, durationInMinutes, serving, notes FROM recipes WHERE id = ?",
+            (recipeid,)
+        )
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Recipe not found")
+
+        recipe_data = RecipeCreate(
+            title=row[1],
+            description=row[2],
+            instructions=row[3],
+            durationInMinutes=row[4],
+            serving=row[5],
+            notes=row[6],
+        )
+
+        cursor.execute("SELECT name FROM ingredients WHERE recipeid = ?", (recipeid,))
+        ingredients = [IngredientOut(name=r[0]) for r in cursor.fetchall()]
+
+        cursor.execute("SELECT name FROM equipments WHERE recipeid = ?", (recipeid,))
+        equipments = [EquipmentOut(name=r[0]) for r in cursor.fetchall()]
+
+        return {
+            "id": row[0],
+            "recipe": recipe_data,
+            "ingredients": ingredients,
+            "equipments": equipments,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"Failed to get recipe: {str(error)}")
+
+    finally:
+        if cursor and connection:
+            close_db(cursor, connection)
 
 
 @app.delete("/{recipeid}")
 def delete_recipe(recipeid: int):
-    pass
+    connection = None
+    cursor = None
 
+    try:
+        connection, cursor = connect_db()
 
-@app.get("/{recipeid}")
-def get_recipe(recipeid: int):
-    pass
+        cursor.execute("SELECT id FROM recipes WHERE id = ?", (recipeid,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Recipe not found")
 
+        cursor.execute("DELETE FROM ingredients WHERE recipeid = ?", (recipeid,))
+        cursor.execute("DELETE FROM equipments WHERE recipeid = ?", (recipeid,))
+        cursor.execute("DELETE FROM recipes WHERE id = ?", (recipeid,))
+        connection.commit()
 
-@app.get("/recipes")
-def get_recipes():
-    pass
+        return {"message": f"Recipe {recipeid} deleted successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as error:
+        if connection:
+            connection.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete recipe: {str(error)}")
+
+    finally:
+        if cursor and connection:
+            close_db(cursor, connection)

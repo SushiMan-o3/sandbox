@@ -9,3 +9,5 @@
 
 # what i did
 - i think i am going to use claude api to read the files and images cause its simply better to u
+
+- realized that get recipes gets all recipes in the database which could be extremely time consuming, so we used a page style viewer that only gives 6 recipes at a given time to ensure that we are not overwhelming the backend when we pull in an api request that checks

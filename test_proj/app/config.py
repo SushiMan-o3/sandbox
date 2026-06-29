@@ -1,4 +1,4 @@
-CLAUDE_TOKEN = "Get ur own"
+CLAUDE_TOKEN = "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"
 DATABASE_URL = "database.db"
 
 PROMPT = """
