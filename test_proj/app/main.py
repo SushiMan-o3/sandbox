@@ -230,6 +230,25 @@ def convert_to_json(markdown: str) -> dict:
     return json.loads(text.strip())
 
 
+def search_to_sqlquery(search: str) -> str:
+    if search == "":
+        return "SELECT * FROM recipes"
+    
+    message = client.messages.create(
+        max_tokens=1024,
+        messages=[
+            {
+                "role": "user",
+                "content": "PROMPT" + search,
+            }
+        ],
+        model="claude-haiku-4-5-20251001",
+    )
+    
+    return message.content[0].text.strip()
+
+
+
 # --- fastAPI set-up + Routes --- 
 
 init_db()
@@ -401,17 +420,30 @@ def update_recipe(recipeid: int, data: RecipeToDB):
 
 
 @app.get("/recipes", response_model=list[RecipeDBOut])
-def get_recipes(page: int = 0, limit: int = 6):
+def get_recipes(query: str = "", page: int = 0, limit: int = 6):
     connection = None
     cursor = None
 
     try:
         connection, cursor = connect_db()
 
-        cursor.execute(
-            "SELECT id, title, description, instructions, durationInMinutes, serving, notes FROM recipes LIMIT ? OFFSET ?",
-            (limit, page * limit),
-        )
+        if query:
+            like = f"%{query}%"
+            cursor.execute(
+                """
+                SELECT id, title, description, instructions, durationInMinutes, serving, notes
+                FROM recipes
+                WHERE title LIKE ? OR description LIKE ? OR notes LIKE ?
+                LIMIT ? OFFSET ?
+                """,
+                (like, like, like, limit, page * limit),
+            )
+        else:
+            cursor.execute(
+                "SELECT id, title, description, instructions, durationInMinutes, serving, notes FROM recipes LIMIT ? OFFSET ?",
+                (limit, page * limit),
+            )
+
         recipe_rows = cursor.fetchall()
 
         if not recipe_rows:
