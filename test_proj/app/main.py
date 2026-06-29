@@ -13,10 +13,6 @@ from pydantic import BaseModel, Field
 from typing import Optional
 import sqlite3 as sql
 
-from docling.document_converter import DocumentConverter, PdfFormatOption
-from docling.datamodel.base_models import InputFormat
-from docling.datamodel.pipeline_options import EasyOcrOptions, PdfPipelineOptions
-
 from config import CLAUDE_TOKEN, PROMPT
 from database import connect_db, close_db, init_db
 
@@ -73,18 +69,6 @@ class RecipeDBOut(BaseModel):
 client = Anthropic(
     api_key=CLAUDE_TOKEN,
 )
-
-
-# pipeline_options = PdfPipelineOptions()
-# pipeline_options.do_ocr = True # enables it to read pdfs/images without text layer
-# pipeline_options.ocr_options = EasyOcrOptions() # EasyOcr is the best option, the other Ocrs suck
-
-# converter = DocumentConverter(   # adding format options for the converter
-#     format_options={
-#         InputFormat.IMAGE: PdfFormatOption(pipeline_options=pipeline_options),
-#         InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options),
-#     }
-# )
 
 
 async def convert_to_markdown(upload: UploadFile) -> str:
@@ -185,18 +169,6 @@ async def convert_to_markdown(upload: UploadFile) -> str:
     
     finally:
         Path(tmp_path).unlink(missing_ok=True)
-
-# def convert_to_markdown(upload: UploadFile):
-#     suffix = Path(upload.filename).suffix
-#     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-#         shutil.copyfileobj(upload.file, tmp)
-#         tmp_path = tmp.name
-
-#     try:
-#         doc = converter.convert(tmp_path).document
-#         return doc.export_to_markdown()
-#     finally:
-#         Path(tmp_path).unlink(missing_ok=True)
         
         
 async def scrape_to_markdown(url: str) -> str:  
@@ -291,12 +263,6 @@ app = FastAPI()
 def home():
     return {}
 
-"""
-so the end below basically accept an input type then convert it into usable data
-which it returns then redirect you to add_recipe manually which has all fields added
-in there where the person can oversee what is happened and make edits as nesscary then
-submit the recipe on their own as needed
-"""
 
 @app.post("/upload_file_to_json", response_model=AIRecipeParseOut)
 async def upload_file_to_json(file: UploadFile = File(...)):
