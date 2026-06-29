@@ -229,26 +229,37 @@ def convert_to_json(markdown: str) -> dict:
     return json.loads(text.strip())
 
 
-def search_to_sqlquery(search: str) -> str:
-    if search == "":
-        return "SELECT * FROM recipes"
-    
-    message = client.messages.create(
-        max_tokens=1024,
-        messages=[
-            {
-                "role": "user",
-                "content": "PROMPT" + search,
-            }
-        ],
-        model="claude-haiku-4-5-20251001",
-    )
-    
-    return message.content[0].text.strip()
+def get_recipe_emoji(title: str, description: str = "", ingredients: list[str] = None) -> str:
+    ingredients = ingredients or []
+
+    text = " ".join([title, description, *ingredients]).lower()
+
+    emoji_rules = [
+        (["spaghetti", "pasta", "noodle", "carbonara", "alfredo"], "🍝"),
+        (["cookie", "cookies", "chocolate chip"], "🍪"),
+        (["avocado", "toast"], "🥑"),
+        (["soup", "broth", "stew"], "🍲"),
+        (["banana", "bread", "loaf"], "🍞"),
+        (["salad", "lettuce", "cucumber", "tomato"], "🥗"),
+        (["pizza"], "🍕"),
+        (["burger"], "🍔"),
+        (["rice"], "🍚"),
+        (["chicken"], "🍗"),
+        (["beef", "steak"], "🥩"),
+        (["fish", "salmon"], "🐟"),
+        (["egg", "eggs"], "🥚"),
+        (["cake"], "🍰"),
+        (["pancake", "pancakes"], "🥞"),
+    ]
+
+    for keywords, emoji in emoji_rules:
+        if any(word in text for word in keywords):
+            return emoji
+
+    return "🍽️"
 
 
-
-# --- fastAPI set-up + Routes --- 
+# --- fastAPI set-up + endpoints and routes --- 
 
 init_db()
 app = FastAPI()
