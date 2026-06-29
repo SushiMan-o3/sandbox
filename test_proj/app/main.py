@@ -11,7 +11,6 @@ from bs4 import BeautifulSoup
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional
-import sqlite3 as sql
 
 from config import CLAUDE_TOKEN, PROMPT
 from database import connect_db, close_db, init_db
