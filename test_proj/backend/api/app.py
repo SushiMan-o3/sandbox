@@ -290,6 +290,28 @@ def home():
     return {}
 
 
+@app.get("/db-test")
+def db_test():
+    connection = None
+    cursor = None
+
+    try:
+        connection, cursor = connect_db()
+        cursor.execute("SELECT 1")
+        result = cursor.fetchone()
+
+        return {
+            "database": "connected",
+            "result": result[0]
+        }
+
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=str(error))
+
+    finally:
+        if cursor and connection:
+            close_db(cursor, connection)
+
 @app.post("/upload_file_to_json", response_model=AIRecipeParseOut)
 async def upload_file_to_json(file: UploadFile = File(...)):
     markdown_content = await convert_to_markdown(file)
