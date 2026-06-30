@@ -270,11 +270,16 @@ init_db()
 
 app = FastAPI()
 
+origins = [
+    "http://localhost",
+    "http://localhost:3000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=origins,
+    allow_methods=["*"], # block methods or only allow certain
+    allow_headers=["*"], # block header or only allow certain
 )
 
 
