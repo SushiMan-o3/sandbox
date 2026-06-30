@@ -1,4 +1,3 @@
-import sqlite3 as sql
 import os
 from dotenv import load_dotenv
 import psycopg2
@@ -23,17 +22,12 @@ def close_db(cursor, connection):
     connection.close()
 
 
-def close_db(cursor, connection):
-    cursor.close()
-    connection.close()
-
-
 def init_db():
     connection, cursor = connect_db()
     
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS recipes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             title VARCHAR(100) NOT NULL,
             description TEXT NOT NULL,
             instructions TEXT NOT NULL,
@@ -42,10 +36,10 @@ def init_db():
             notes TEXT
         )
     """)
-    
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS ingredients (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
             recipeid INTEGER NOT NULL,
             FOREIGN KEY (recipeid) REFERENCES recipes(id) ON DELETE CASCADE
@@ -54,7 +48,7 @@ def init_db():
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS equipments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             name TEXT NOT NULL,
             recipeid INTEGER NOT NULL,
             FOREIGN KEY (recipeid) REFERENCES recipes(id) ON DELETE CASCADE

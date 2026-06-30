@@ -1,5 +1,5 @@
 PROMPT = """
-Your job is to take messy scraped recipe text or OCR-scanned recipe text and convert it into clean JSON that fits my SQLite database structure and FastAPI response schema.
+Your job is to take messy scraped recipe text or OCR-scanned recipe text and convert it into clean JSON that fits my PostgreSQL database structure and FastAPI response schema.
 
 My database structure is:
 

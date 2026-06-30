@@ -325,7 +325,8 @@ def recipe_to_db(data: RecipeToDB):
                 serving,
                 notes
             )
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            RETURNING id
         """, (
             recipe.title,
             recipe.description,
@@ -335,18 +336,18 @@ def recipe_to_db(data: RecipeToDB):
             recipe.notes,
         ))
 
-        recipe_id = cursor.lastrowid
+        recipe_id = cursor.fetchone()[0]
 
         for ingredient in data.ingredients:
             cursor.execute("""
                 INSERT INTO ingredients (name, recipeid)
-                VALUES (?, ?)
+                VALUES (%s, %s)
             """, (ingredient.name, recipe_id))
 
         for equipment in data.equipments:
             cursor.execute("""
                 INSERT INTO equipments (name, recipeid)
-                VALUES (?, ?)
+                VALUES (%s, %s)
             """, (equipment.name, recipe_id))
 
         connection.commit()
@@ -384,7 +385,7 @@ def update_recipe(recipeid: int, data: RecipeToDB):
         connection, cursor = connect_db()
 
         # check recipe exists
-        cursor.execute("SELECT id FROM recipes WHERE id = ?", (recipeid,))
+        cursor.execute("SELECT id FROM recipes WHERE id = %s", (recipeid,))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="Recipe not found")
 
@@ -392,13 +393,13 @@ def update_recipe(recipeid: int, data: RecipeToDB):
 
         cursor.execute("""
             UPDATE recipes SET
-                title = ?,
-                description = ?,
-                instructions = ?,
-                durationInMinutes = ?,
-                serving = ?,
-                notes = ?
-            WHERE id = ?
+                title = %s,
+                description = %s,
+                instructions = %s,
+                durationInMinutes = %s,
+                serving = %s,
+                notes = %s
+            WHERE id = %s
         """, (
             recipe.title,
             recipe.description,
@@ -410,18 +411,18 @@ def update_recipe(recipeid: int, data: RecipeToDB):
         ))
 
         # replace ingredients and equipments wholesale
-        cursor.execute("DELETE FROM ingredients WHERE recipeid = ?", (recipeid,))
-        cursor.execute("DELETE FROM equipments WHERE recipeid = ?", (recipeid,))
+        cursor.execute("DELETE FROM ingredients WHERE recipeid = %s", (recipeid,))
+        cursor.execute("DELETE FROM equipments WHERE recipeid = %s", (recipeid,))
 
         for ingredient in data.ingredients:
             cursor.execute(
-                "INSERT INTO ingredients (name, recipeid) VALUES (?, ?)",
+                "INSERT INTO ingredients (name, recipeid) VALUES (%s, %s)",
                 (ingredient.name, recipeid)
             )
 
         for equipment in data.equipments:
             cursor.execute(
-                "INSERT INTO equipments (name, recipeid) VALUES (?, ?)",
+                "INSERT INTO equipments (name, recipeid) VALUES (%s, %s)",
                 (equipment.name, recipeid)
             )
 
@@ -463,14 +464,14 @@ def get_recipes(query: str = "", page: int = 0, limit: int = 6):
                 """
                 SELECT id, title, description, instructions, durationInMinutes, serving, notes
                 FROM recipes
-                WHERE title LIKE ? OR description LIKE ? OR notes LIKE ?
-                LIMIT ? OFFSET ?
+                WHERE title ILIKE %s OR description ILIKE %s OR notes ILIKE %s
+                LIMIT %s OFFSET %s
                 """,
                 (like, like, like, limit, page * limit),
             )
         else:
             cursor.execute(
-                "SELECT id, title, description, instructions, durationInMinutes, serving, notes FROM recipes LIMIT ? OFFSET ?",
+                "SELECT id, title, description, instructions, durationInMinutes, serving, notes FROM recipes LIMIT %s OFFSET %s",
                 (limit, page * limit),
             )
 
@@ -480,7 +481,7 @@ def get_recipes(query: str = "", page: int = 0, limit: int = 6):
             return []
 
         recipe_ids = [row[0] for row in recipe_rows]
-        placeholders = ",".join("?" * len(recipe_ids))
+        placeholders = ",".join(["%s"] * len(recipe_ids))
 
         cursor.execute(
             f"SELECT name, recipeid FROM ingredients WHERE recipeid IN ({placeholders})",
@@ -533,7 +534,7 @@ def get_recipe(recipeid: int):
         connection, cursor = connect_db()
 
         cursor.execute(
-            "SELECT id, title, description, instructions, durationInMinutes, serving, notes FROM recipes WHERE id = ?",
+            "SELECT id, title, description, instructions, durationInMinutes, serving, notes FROM recipes WHERE id = %s",
             (recipeid,)
         )
         row = cursor.fetchone()
@@ -549,10 +550,10 @@ def get_recipe(recipeid: int):
             notes=row[6],
         )
 
-        cursor.execute("SELECT name FROM ingredients WHERE recipeid = ?", (recipeid,))
+        cursor.execute("SELECT name FROM ingredients WHERE recipeid = %s", (recipeid,))
         ingredients = [IngredientOut(name=r[0]) for r in cursor.fetchall()]
 
-        cursor.execute("SELECT name FROM equipments WHERE recipeid = ?", (recipeid,))
+        cursor.execute("SELECT name FROM equipments WHERE recipeid = %s", (recipeid,))
         equipments = [EquipmentOut(name=r[0]) for r in cursor.fetchall()]
 
         return {
@@ -581,13 +582,13 @@ def delete_recipe(recipeid: int):
     try:
         connection, cursor = connect_db()
 
-        cursor.execute("SELECT id FROM recipes WHERE id = ?", (recipeid,))
+        cursor.execute("SELECT id FROM recipes WHERE id = %s", (recipeid,))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="Recipe not found")
 
-        cursor.execute("DELETE FROM ingredients WHERE recipeid = ?", (recipeid,))
-        cursor.execute("DELETE FROM equipments WHERE recipeid = ?", (recipeid,))
-        cursor.execute("DELETE FROM recipes WHERE id = ?", (recipeid,))
+        cursor.execute("DELETE FROM ingredients WHERE recipeid = %s", (recipeid,))
+        cursor.execute("DELETE FROM equipments WHERE recipeid = %s", (recipeid,))
+        cursor.execute("DELETE FROM recipes WHERE id = %s", (recipeid,))
         connection.commit()
 
         return {"message": f"Recipe {recipeid} deleted successfully"}
