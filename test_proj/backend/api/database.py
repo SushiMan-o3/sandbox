@@ -1,6 +1,7 @@
 import sqlite3 as sql
 import os
 from dotenv import load_dotenv
+import psycopg2
 
 
 load_dotenv()
@@ -9,9 +10,17 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 
 def connect_db():
-    connection = sql.connect("database.db")
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL is missing")
+
+    connection = psycopg2.connect(DATABASE_URL)
     cursor = connection.cursor()
     return connection, cursor
+
+
+def close_db(cursor, connection):
+    cursor.close()
+    connection.close()
 
 
 def close_db(cursor, connection):
