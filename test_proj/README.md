@@ -2,6 +2,9 @@
 - understand anthropics ai function where it reads from the image and pdf
 - figure out why the scraping isnt working properly + the urls with a pdf are not working properly
 - understand how axios sends requests to the frontend
+
+- i think the play might be to test out differehnt websites on beautifulsoup testing before i do something else. i think like half the websites arent working and it causes me to waste my api tokens
+
 # what i did
 - i think i am going to use claude api to read the files and images cause its simply better to using docling cause docling is slower and cannot read hand writing properly cause its noocr feature just sucks. tried using easy ocr it wasnt working for cursive 
 and other text
@@ -17,6 +20,8 @@ and other text
 
 - i have to figure out why the scrapping isnt working properly, and it is diffuclt, for now i think it is decently working well. i used claude to build the frontend with axios and i still need to understand how axios sends requests to the frontend
 - built like different components, etc. 
+
+- i went from .1 spent to .23 cents in a day to be fair, i did use it a lot
 
 - hosting 
 Frontend: Vercel
