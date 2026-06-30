@@ -31,8 +31,6 @@ def close_db(cursor, connection):
 def init_db():
     connection, cursor = connect_db()
     
-    cursor.execute("PRAGMA foreign_keys = ON")
-
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS recipes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
