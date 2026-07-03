@@ -1,0 +1,3 @@
+- polling - send http request backend sends something back
+- long polling - regular polling but theres more back and forth
+- web sockets - can send messages back and forth no problem with TCP connection
