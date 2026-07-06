@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Websocket Chat Sandbox</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Websocket Chat Sandbox</h1>
+      <span id="status">Connecting...</span>
+    </header>
+
+    <div id="chat-log"></div>
+
+    <form id="composer">
+      <button type="button" id="mic-btn" title="Record a voice message">🎤</button>
+      <input type="text" id="text-input" placeholder="Type a message..." autocomplete="off" />
+      <button type="submit" id="send-btn">Send</button>
+    </form>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

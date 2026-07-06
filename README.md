@@ -5,3 +5,5 @@ Backend was planned and writtened by me but claude was used to assist with debug
 Frontend on the other hand was built by claude using React Vite and axios to send http requests to the backend. 
 
 # The rest of this repo is to sort of play around and prototype different things I want to try
+
+- `/websocket-chat-sandbox`: A small websocket chat app where a FastAPI server replies using the Anthropic API, with optional voice input via Deepgram.

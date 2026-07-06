@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+websockets
+python-dotenv
+anthropic
+deepgram-sdk>=7,<8
