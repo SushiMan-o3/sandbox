@@ -1,12 +1,11 @@
 import json
 
 import anthropic
-from deepgram.core.api_error import ApiError as DeepgramApiError
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from api.config import STATIC_DIR
+from api.config import STATIC_DIR, DEEPGRAM_ENABLED
 from api.chat import ask_claude
 from api.transcription import DeepgramNotConfigured, transcribe_audio
 
@@ -62,7 +61,11 @@ async def _handle_audio(websocket: WebSocket, history: list[dict], audio_bytes: 
             "message": "Voice transcription is not configured on this server.",
         })
         return
-    except DeepgramApiError as error:
+    except Exception as error:
+        # Deepgram's SDK only wraps structured API error responses in ApiError;
+        # transport-level failures (timeouts, proxy/connection errors) surface as
+        # raw httpx exceptions, so we catch broadly here to avoid crashing the
+        # websocket connection on any Deepgram call failure.
         await websocket.send_json({
             "type": "error",
             "code": "deepgram_error",
@@ -85,6 +88,7 @@ async def _handle_audio(websocket: WebSocket, history: list[dict], audio_bytes: 
 @app.websocket("/ws/chat")
 async def chat_ws(websocket: WebSocket):
     await websocket.accept()
+    await websocket.send_json({"type": "config", "deepgram_enabled": DEEPGRAM_ENABLED})
     history: list[dict] = []
 
     try:

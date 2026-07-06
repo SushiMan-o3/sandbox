@@ -16,6 +16,7 @@ if ANTHROPIC_API_KEY is None:
 
 anthropic_client = Anthropic(api_key=ANTHROPIC_API_KEY)
 deepgram_client = DeepgramClient(api_key=DEEPGRAM_API_KEY) if DEEPGRAM_API_KEY else None
+DEEPGRAM_ENABLED = deepgram_client is not None
 
 CLAUDE_MODEL = "claude-haiku-4-5-20251001"
 MAX_TOKENS = 1024

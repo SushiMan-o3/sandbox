@@ -33,9 +33,32 @@ header h1 {
   margin: 0;
 }
 
+#header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
 #status {
   font-size: 0.8rem;
   color: #9a9a9a;
+}
+
+#tts-toggle {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  opacity: 0.9;
+}
+
+#tts-toggle.muted {
+  opacity: 0.4;
+}
+
+#tts-toggle:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 #chat-log {
@@ -73,6 +96,10 @@ header h1 {
   border: 1px dashed #555;
   font-style: italic;
   color: #b8b8b8;
+}
+
+.msg-interim {
+  opacity: 0.6;
 }
 
 .msg-error {

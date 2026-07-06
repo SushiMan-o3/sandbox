@@ -6,8 +6,11 @@ A small chat app for testing websockets: a browser client talks to a FastAPI ser
 
 - Realtime chat over a single websocket connection (`/ws/chat`)
 - Full (non-streaming) replies from Claude, with a simple in-memory conversation history per connection
-- Optional voice input: record audio in the browser, it's transcribed via Deepgram and automatically sent to Claude as a chat message
-- Graceful degradation — if no Deepgram key is configured, text chat still works and the mic button reports itself as unavailable
+- Voice input: record audio in the browser and have it automatically sent to Claude as a chat message
+  - With `DEEPGRAM_API_KEY` set, audio is transcribed server-side via Deepgram
+  - Without it, the browser's own built-in speech recognition is used instead — no API key needed, with live partial captions while you speak
+- Text-to-speech: Claude's replies are read aloud using the browser's built-in speech synthesis, with a mute/unmute toggle in the header
+- Graceful degradation — if neither Deepgram nor browser speech recognition/synthesis is available, the app falls back cleanly (text-only chat, disabled buttons with explanatory tooltips)
 - Zero-build static frontend (plain HTML/CSS/JS) served directly by FastAPI — no separate frontend dev server needed
 
 ## Setup
@@ -77,19 +80,25 @@ Open `http://127.0.0.1:8000` in your browser.
 
 | `type` | Shape | Meaning |
 |---|---|---|
+| `config` | `{"type": "config", "deepgram_enabled": bool}` | Sent once right after connecting, so the client knows whether to use server-side (Deepgram) or browser-side speech recognition for the mic button |
 | `assistant_message` | `{"type": "assistant_message", "text": "..."}` | Claude's reply |
-| `transcript` | `{"type": "transcript", "text": "..."}` | What your recorded audio was transcribed to, sent right before it's forwarded to Claude |
+| `transcript` | `{"type": "transcript", "text": "..."}` | What your recorded audio was transcribed to (Deepgram path only), sent right before it's forwarded to Claude |
 | `error` | `{"type": "error", "code": "...", "message": "..."}` | See error codes below |
 
 Error `code` values: `invalid_message`, `anthropic_error`, `deepgram_unavailable`, `deepgram_error`, `empty_transcript`.
 
 ## Voice feature notes
 
-- Requires `DEEPGRAM_API_KEY` — [Deepgram](https://deepgram.com/) is a paid/metered speech-to-text API, billed by usage.
-- Uses the `nova-3` model.
-- Recordings auto-stop after 60 seconds.
-- Tested against browsers that record `audio/webm;codecs=opus` by default (Chrome, Firefox). Safari's default recording format may not transcribe correctly.
-- When a transcript comes back, it's shown in the chat log and immediately sent to Claude — there's no manual review/edit step before sending.
+There are two ways the mic button can work, chosen automatically based on whether the server has a Deepgram key configured:
+
+1. **With `DEEPGRAM_API_KEY` set**: audio is recorded in-browser and sent to the server as binary websocket frames, which [Deepgram](https://deepgram.com/) (a paid/metered API, `nova-3` model) transcribes server-side. Recordings auto-stop after 60 seconds. Tested against browsers that record `audio/webm;codecs=opus` by default (Chrome, Firefox); Safari's default recording format may not transcribe correctly.
+2. **Without it**: the browser's own built-in speech recognition (the Web Speech API) transcribes locally — no server round-trip, no API key needed. It shows live partial captions as you speak and auto-finalizes when you pause. Solid support in Chromium-based browsers (Chrome, Edge); unsupported in Firefox and only partially supported in Safari.
+
+Either way, once a transcript is ready it's shown in the chat log and immediately sent to Claude — there's no manual review/edit step before sending. If neither mechanism is available, the mic button is disabled with a tooltip explaining why; text chat is unaffected.
+
+## Text-to-speech
+
+Claude's replies are read aloud automatically using the browser's built-in `speechSynthesis` API — no server involvement or API key needed. Click the 🔊 button in the header to mute/unmute. If the browser doesn't support speech synthesis, the button is disabled.
 
 ## Project Structure
 
