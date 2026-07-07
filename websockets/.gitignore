@@ -2,5 +2,6 @@ __pycache__/
 *.pyc
 .env
 backend/database.db
+backend/.venv/
 frontend/node_modules/
 frontend/dist/
