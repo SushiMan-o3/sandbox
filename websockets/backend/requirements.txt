@@ -1,5 +1,5 @@
-fastapi>=0.115.0
-uvicorn[standard]>=0.30.0
-websockets>=11.0.0
-python-dotenv>=1.0.0
-SpeechRecognition>=3.10.0
+# pip supports comments with '#'; install everything below via: pip install -r requirements.txt
+fastapi          # the web framework: routing, request/response handling, websocket support
+uvicorn[standard] # the ASGI server that actually runs the FastAPI app (main.py calls uvicorn.run)
+python-dotenv     # lets config.py load DEEPGRAM_API_KEY etc from a local .env file
+deepgram-sdk>=7.0.0 # official client used by services/stt_service.py and services/tts_service.py

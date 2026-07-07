@@ -1,71 +1,36 @@
-import asyncio
-from pathlib import Path
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-import speech_recognition as sr
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.staticfiles import StaticFiles
+from routes.voice import router as voice_router
 
-from database import init_db, seed_data
+app = FastAPI(title="Voice Reverser")  # the ASGI application uvicorn actually serves
 
-app = FastAPI(title="Sandbox FastAPI")
+# The websocket handshake itself isn't blocked by browser CORS the way a fetch/
+# axios call would be, but this middleware is kept in place for the plain HTTP
+# "/" health-check route below (and any future HTTP routes) so the Vite dev
+# server on :5173 is allowed to call this API on :8000 during local dev.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # only the Vite dev server origin is allowed
+    allow_methods=["*"],  # permits GET/POST/etc, not just simple requests
+    allow_headers=["*"],  # permits any request headers the frontend sends
+)
 
-FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+# Registers every route defined in routes/voice.py (currently just the
+# websocket endpoint) under the /api/voice prefix, so @router.websocket("/ws")
+# there becomes reachable at ws://host:8000/api/voice/ws here.
+app.include_router(voice_router, prefix="/api/voice", tags=["voice"])
 
 
-@app.on_event("startup") # when the fasapi, starts the following happens
-def startup_event() -> None: 
-    init_db()   # initializes the database and creates the table if it doesn't exist
-    seed_data() # just inserts something random if there's nothing
-
-
-@app.get("/") # for endpoint /
+@app.get("/")  # plain HTTP GET, useful for confirming the server is up (e.g. curl http://localhost:8000/)
 def read_root() -> dict[str, str]:
     return {"message": "FastAPI backend is running"}
 
 
-@app.websocket("/ws") # for endpoint /ws
-async def websocket_endpoint(websocket: WebSocket) -> None:
-    await websocket.accept() # accepts the connection
-
-    # the frontend tells us the sample rate its microphone was captured at
-    # via a query param, e.g. ws://host/ws?rate=48000
-    sample_rate = int(websocket.query_params.get("rate", 16000))
-    sample_width = 2  # 16-bit PCM
-
-    recognizer = sr.Recognizer()
-
-    try:
-        while True:
-            data = await websocket.receive_bytes() # raw 16-bit PCM audio from the client
-
-            audio = sr.AudioData(data, sample_rate, sample_width)
-
-            try:
-                # recognize_google is a blocking network call, so run it off the event loop
-                transcript = await asyncio.to_thread(recognizer.recognize_google, audio)
-                rtn_msg = f"You said: {transcript}"
-            except sr.UnknownValueError:
-                rtn_msg = "Could not understand audio"
-            except sr.RequestError as e:
-                rtn_msg = f"Speech recognition service error: {e}"
-
-            await websocket.send_text(rtn_msg) # sends the transcript back to the client
-
-    except WebSocketDisconnect:
-        print("Client disconnected") # if the client disconnects, it prints this message
-    except Exception as e:
-        print(f"WebSocket error: {e}")
-        await websocket.close()
-
-
-# serves the built React frontend at /frontend/ so the backend hosts its own UI
-# (run `npm install && npm run build` inside frontend/ first to generate dist/)
-if FRONTEND_DIR.exists():
-    app.mount("/frontend", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
-
-
-
 if __name__ == "__main__":
+    # Only runs when this file is executed directly (`python main.py`), not
+    # when it's imported (e.g. by tests or by `uvicorn main:app` from the CLI,
+    # which imports this module rather than running it as __main__).
     import uvicorn
 
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
